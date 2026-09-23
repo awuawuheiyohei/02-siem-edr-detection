@@ -1,0 +1,42 @@
+id: T1490
+name: "Shadow Copy Deletion (Ransomware Defense)"
+mitre_technique: T1490
+mitre_tactic: "TA0040 - Impact"
+severity: critical
+description: |
+  Detect deletion or tampering of shadow copies (vssadmin, wbadmin).
+  Common ransomware pre-encryption step to block recovery.
+
+detection:
+  type: process
+  event_types: [process.create]
+  conditions:
+    - field: process.command_line
+      operator: matches_regex
+      pattern: "(?i)(vssadmin\\s+(delete|resize|shadow)|wbadmin\\s+delete\\s+shadowcopy|wbadmin\\s+delete\\s+catalog)"
+    - field: process.name
+      operator: in
+      values: ["vssadmin.exe", "wbadmin.exe", "powershell.exe"]
+    - field: process.command_line
+      operator: contains_any
+      values:
+        - "delete shadows"
+        - "delete shadowcopy"
+        - "delete catalog"
+
+  false_positives:
+    - "Backup admin maintenance (rare; should be scheduled task)"
+
+  suppression_hint: |
+    Suppress only for explicit backup admin tickets with change control.
+
+severity_rationale: |
+  Critical - Shadow copy deletion = ransomware preparing to encrypt.
+  This is the LAST warning before encryption starts.
+
+response:
+  immediate_actions:
+    - "Isolate host IMMEDIATELY"
+    - "Trigger ransomware playbook"
+    - "Alert backup team to verify cloud backups intact"
+  notification: "P1 to SOC + IT + Backup"

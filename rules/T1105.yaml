@@ -1,0 +1,36 @@
+id: T1105
+name: "Certutil Remote File Download"
+mitre_technique: T1105
+mitre_tactic: "TA0011 - Command and Control"
+severity: high
+description: |
+  Detect abuse of native certutil.exe as LOLBIN to download remote files.
+  Adversaries use certutil -urlcache -split -f to download malware
+  while bypassing simple EDR detections.
+
+detection:
+  type: process
+  event_types: [process.create]
+  conditions:
+    - field: process.name
+      operator: equals
+      values: ["certutil.exe", "certutil"]
+    - field: process.command_line
+      operator: matches_regex
+      pattern: "(?i)certutil.*(-urlcache|-split|-f)\\s+http"
+
+  false_positives:
+    - "Admin downloading certificates (verify URL is HTTPS root CA)"
+
+  suppression_hint: |
+    Suppress for known certificate download URLs (Microsoft PKI).
+
+severity_rationale: |
+  High - Certutil is a top LOLBIN for malware download.
+
+response:
+  immediate_actions:
+    - "Capture downloaded file hash"
+    - "Block outbound network to download source"
+    - "Submit hash to EDR / sandbox"
+  notification: "P2 to SOC"

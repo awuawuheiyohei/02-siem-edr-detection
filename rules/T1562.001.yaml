@@ -1,0 +1,40 @@
+id: T1562.001
+name: "EDR/Defender Disabled or Stopped"
+mitre_technique: T1562.001
+mitre_tactic: "TA0005 - Defense Evasion"
+severity: critical
+description: |
+  Detect tampering with Defender or EDR services (sc stop, Set-MpPreference,
+  uninstall EDR agent). Adversaries disable security tools before attack.
+
+detection:
+  type: process
+  event_types: [process.create, service.modify]
+  conditions:
+    - field: process.command_line
+      operator: matches_regex
+      pattern: "(?i)(sc\\s+(stop|delete|config)\\s+(WinDefend|McAfee|SEP|CrowdStrike|SentinelOne)|Set-MpPreference.*DisableRealtimeMonitoring\\s+\\$true|Uninstall-Module.*-Name.*Defender|net\\s+stop\\s+(WdBoot|WdNis|WdFilter|WdCC))"
+
+  # EDR 服务状态变更
+    - field: service.name
+      operator: in
+      values: ["WinDefend", "WdNisSvc", "csagent", "csfalconservice", "SentinelAgent"]
+    - field: service.state
+      operator: in
+      values: ["stopped", "disabled"]
+
+  false_positives:
+    - "Admin troubleshooting EDR (rare; should be ticket)"
+
+  suppression_hint: |
+    NEVER suppress in production. EDR disable = critical alert.
+
+severity_rationale: |
+  Critical - Disabling EDR = adversary preparing for attack.
+
+response:
+  immediate_actions:
+    - "Isolate host IMMEDIATELY"
+    - "Restore EDR via backup mechanism"
+    - "Treat as full compromise — assume attacker had access"
+  notification: "P1 to SOC"

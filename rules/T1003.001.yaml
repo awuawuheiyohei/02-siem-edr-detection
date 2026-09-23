@@ -1,0 +1,48 @@
+id: T1003.001
+name: "LSASS Memory Dump for Credential Theft"
+mitre_technique: T1003.001
+mitre_tactic: "TA0006 - Credential Access"
+severity: critical
+description: |
+  Detect attempts to dump LSASS process memory using known offensive tools
+  (Mimikatz, ProcDump, comsvcs.dll MiniDump). LSASS contains plaintext
+  credentials for interactive logons.
+
+detection:
+  type: process_or_file
+  event_types:
+    - process.create
+    - file.create
+  conditions:
+    - field: process.name
+      operator: in
+      values: ["mimikatz.exe", "procdump.exe", "comsvcs.dll"]
+    - field: process.command_line
+      operator: contains_any
+      values:
+        - "sekurlsa::logonpasswords"
+        - "lsadump::sam"
+        - "minidump"
+        - "MiniDump"
+        - "lsass.exe"
+        - "comsvcs"
+        - "rundll32 comsvcs"
+
+  false_positives:
+    - "Legitimate admin debugging tools (rare)"
+    - "Memory forensics during IR (very rare in production)"
+
+  suppression_hint: |
+    Suppress only for explicit IR forensics operations with documented IR ticket.
+    Default: NEVER suppress in production.
+
+severity_rationale: |
+  Critical - LSASS memory dump is direct precursor to credential theft
+  and lateral movement. False positive suppression should be reviewed by CISO.
+
+response:
+  immediate_actions:
+    - "Isolate host"
+    - "Force password reset for affected user"
+    - "Revoke all sessions"
+  notification: "P1 to SOC + IT"

@@ -1,0 +1,40 @@
+id: T1053.005
+name: "Malicious Scheduled Task Persistence"
+mitre_technique: T1053.005
+mitre_tactic: "TA0003 - Persistence"
+severity: high
+description: |
+  Detect creation of scheduled tasks via command line or scripting,
+  especially with suspicious triggers (onlogon, onstart) and
+  hidden/powershell execution.
+
+detection:
+  type: process
+  event_types: [process.create]
+  conditions:
+    - field: process.command_line
+      operator: matches_regex
+      pattern: "(?i)(schtasks\\.exe|/create|/create\\b).{0,200}(onlogon|onstart|onidle|once).{0,200}(powershell|cmd|wscript|cscript|mshta|regsvr32)"
+    - field: process.command_line
+      operator: contains_any
+      values:
+        - "/create"
+        - "-create"
+        - "New-ScheduledTask"
+
+  false_positives:
+    - "Legitimate admin task creation (verify task name + script path)"
+
+  suppression_hint: |
+    Suppress for SCCM/Intune service accounts (create many tasks).
+
+severity_rationale: |
+  High - Scheduled tasks are the #1 persistence mechanism after reboot.
+  Block on detection, review after.
+
+response:
+  immediate_actions:
+    - "Review task XML for hidden execution"
+    - "Check task creator user (privileged user = higher severity)"
+    - "Disable task and isolate if confirmed malicious"
+  notification: "P2 to SOC"

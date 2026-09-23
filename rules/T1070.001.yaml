@@ -1,0 +1,41 @@
+id: T1070.001
+name: "Windows Security Audit Log Clearing"
+mitre_technique: T1070.001
+mitre_tactic: "TA0005 - Defense Evasion"
+severity: critical
+description: |
+  Detect attempts to clear or tamper Windows Security event log
+  (wevtutil, auditpol, PowerShell Clear-EventLog). Log clearing is a
+  strong indicator of post-exploitation activity to hide tracks.
+
+detection:
+  type: process
+  event_types: [process.create]
+  conditions:
+    - field: process.command_line
+      operator: matches_regex
+      pattern: "(?i)(wevtutil\\s+(cl|clear)|Clear-EventLog|auditpol\\s+/clear|Remove-EventLog)"
+
+  # 特殊检测 — auditpol 失败（检测 audit 关闭）
+    - field: process.command_line
+      operator: matches_regex
+      pattern: "(?i)auditpol\\s+/set\\s+/system:\\/disable"
+
+  false_positives:
+    - "Legitimate admin clearing test logs (very rare in production)"
+
+  suppression_hint: |
+    NEVER suppress in production. If admin needs to clear logs,
+    they should document via IR ticket first.
+
+severity_rationale: |
+  Critical - Log clearing = cover-up of malicious activity. Assume breach
+  and trigger full IR.
+
+response:
+  immediate_actions:
+    - "Isolate host IMMEDIATELY"
+    - "Capture process + command line before host is reimaged"
+    - "Pull all logs from SIEM (already captured by us)"
+    - "Trigger ransomware playbook (log clearing often precedes)"
+  notification: "P1 to SOC + IT + Legal"

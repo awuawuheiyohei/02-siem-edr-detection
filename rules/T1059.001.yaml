@@ -1,0 +1,41 @@
+id: T1059.001
+name: "PowerShell Remote Obfuscated Script Download"
+mitre_technique: T1059.001
+mitre_tactic: "TA0002 - Execution"
+severity: high
+description: |
+  Detect PowerShell commands downloading and executing obfuscated scripts
+  from external sources (common in initial access and lateral movement).
+
+detection:
+  type: process
+  event_types: [process.create]
+  conditions:
+    - field: process.name
+      operator: equals
+      values: ["powershell.exe", "pwsh.exe"]
+    - field: process.command_line
+      operator: matches_regex
+      pattern: "(?i)(Invoke-WebRequest|IWR|Invoke-Expression|IEX|DownloadString|DownloadFile|WebClient).{0,80}(http|ftp)://"
+        # OR: 高度混淆特征
+    - field: process.command_line
+      operator: matches_regex
+      pattern: "(?i)(EncodedCommand|-e[nc]? |FromBase64String|IEX\\s*\\()"
+
+  false_positives:
+    - "DevOps scripts (rare)"
+    - "Ansible/Puppet custom modules"
+
+  suppression_hint: |
+    Suppress for SCCM/Intune deployment accounts.
+
+severity_rationale: |
+  High - PowerShell is heavily abused for initial execution. Even legitimate
+  admin scripts rarely use IEX + Base64.
+
+response:
+  immediate_actions:
+    - "Capture process command line + parent process"
+    - "Block outbound network to command-and-control"
+    - "Trigger credential_leak playbook if download succeeded"
+  notification: "P2 to SOC"

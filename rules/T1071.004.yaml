@@ -1,0 +1,41 @@
+id: T1071.004
+name: "Suspicious DNS Tunneling / Data Exfiltration"
+mitre_technique: T1071.004
+mitre_tactic: "TA0011 - Command and Control"
+severity: high
+description: |
+  Detect DNS tunneling or suspicious long subdomain queries that may
+  indicate data exfiltration or C2 communication hidden in DNS.
+
+detection:
+  type: network
+  event_types: [dns.query]
+  conditions:
+    - field: dns.query_name
+      operator: matches_regex
+      pattern: "^[a-zA-Z0-9-_]{30,}\\."  # 异常长子域名
+    - field: dns.query_name
+      operator: matches_regex
+      pattern: "\\.(tk|ml|ga|cf|gq)$"  # 滥用 TLD
+
+    # 频率检测：单 host 短时间大量 DNS
+    - field: dns.query_volume_per_host_per_hour
+      operator: gt
+      value: 1000
+
+  false_positives:
+    - "CDN 健康检查（长域名）"
+    - "Anti-spam 检测服务"
+
+  suppression_hint: |
+    Suppress for known CDN domains (cloudfront.net, azureedge.net).
+
+severity_rationale: |
+  High - DNS tunneling = covert channel for C2 or data theft.
+
+response:
+  immediate_actions:
+    - "Capture sample DNS queries"
+    - "Block egress to suspicious TLDs"
+    - "Analyze packet captures if available"
+  notification: "P2 to SOC"

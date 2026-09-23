@@ -1,0 +1,46 @@
+id: T1078.004
+name: "Cloud Account Anomalous Geo Location or Off-Hours Access"
+mitre_technique: T1078.004
+mitre_tactic: "TA0001 - Initial Access"
+severity: high
+description: |
+  Detect cloud identity (Azure AD / Okta / AWS IAM) sign-ins from
+  anomalous geo locations or outside user's normal working hours.
+
+detection:
+  type: auth_event
+  event_types: [auth.signin]
+  conditions:
+    - field: event.source
+      operator: in
+      values: ["azure-ad", "okta", "aws-iam", "google-workspace"]
+    - field: auth.risk_level
+      operator: in
+      values: ["medium", "high"]
+    - field: auth.geo.country
+      operator: not_in_user_history
+      window_days: 90
+      threshold: "country_never_seen"
+    - field: auth.timestamp_local
+      operator: outside_hours
+      user_schedule_window: "08:00-20:00"
+      days: ["Mon", "Tue", "Wed", "Thu", "Fri"]
+
+  false_positives:
+    - "Business travel"
+    - "VPN users (often appear from datacenter geo)"
+    - "On-call after hours"
+
+  suppression_hint: |
+    Suppress for users with VPN location or known business travel.
+    Add user-specific allowlist during business trips.
+
+severity_rationale: |
+  High - Account compromise typically starts with anomalous login.
+
+response:
+  immediate_actions:
+    - "Force MFA re-registration"
+    - "Require step-up authentication"
+    - "If confirmed compromise: credential_leak playbook"
+  notification: "P2 to SOC + IT"

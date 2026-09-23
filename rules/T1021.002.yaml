@@ -1,0 +1,43 @@
+id: T1021.002
+name: "SMB / PsExec Lateral Movement"
+mitre_technique: T1021.002
+mitre_tactic: "TA0008 - Lateral Movement"
+severity: critical
+description: |
+  Detect PsExec or SMB-based remote service execution for lateral movement.
+  Common pattern after initial compromise to spread across the network.
+
+detection:
+  type: process
+  event_types: [process.create, network.connect]
+  conditions:
+    - field: process.name
+      operator: in
+      values: ["psexec.exe", "paexec.exe", "wmic.exe"]
+    - field: process.command_line
+      operator: matches_regex
+      pattern: "(?i)(\\\\\\\\|--accept-eula|\\\\\\\\[a-z0-9-]+\\\\admin\\$|cmd\\.exe)"
+
+  # 网络模式：445/139 端口跨主机连接
+    - field: network.dstport
+      operator: in
+      values: [445, 139]
+    - field: network.dsthost
+      operator: not_in
+      values: ["dc01.local", "fs01.local"]  # 已知合法
+
+  false_positives:
+    - "IT admin remote management (verify user)"
+
+  suppression_hint: |
+    Suppress for IT admin workstations with documented purpose.
+
+severity_rationale: |
+  Critical - Lateral movement = active spread. Stop immediately.
+
+response:
+  immediate_actions:
+    - "Block source host network (isolate)"
+    - "Force password reset for source user"
+    - "Scan all hosts user accessed in past 24h"
+  notification: "P1 to SOC"
