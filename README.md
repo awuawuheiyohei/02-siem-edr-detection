@@ -175,7 +175,7 @@ WEB_PORT=5020 python main.py rules
 
 ## 📝 来源
 
-本项目基于 `/Users/jiangwenrui/Downloads/mass/Interview/Security_and_GRC_14_Projects_Plan/02_SIEM_EDR_Detection_Engineering.md` 完整规划落地。
+本项目基于 `/Users/jiangwenrui/Downloads/mass/25-Interview/Security_and_GRC_14_Projects_Plan/02_SIEM_EDR_Detection_Engineering.md` 完整规划落地。
 
 ---
 
